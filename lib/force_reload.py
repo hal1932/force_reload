@@ -1,5 +1,5 @@
 # coding: utf-8
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import
 
 import sys
 import ast
@@ -16,15 +16,25 @@ except ImportError:
 
 
 STDLIB_ROOT = distutils.sysconfig.get_python_lib(standard_lib=True).lower()
+MAYALIB_ROOT = 'C:\\Program Files\\Autodesk\\Maya2018\\bin'
+
+
+__reloaded_modules = set()
 
 
 def force_reload(module_obj):
+    global __reloaded_modules
+    __reloaded_modules.clear()
+
     __force_reload_rec(module_obj)
 
 
 def __is_reload_target(module_obj):
     module_file = module_obj.__dict__.get('__file__', None)
     if module_file is None:
+        return False
+
+    if module_file.startswith(MAYALIB_ROOT):
         return False
 
     if module_file.lower().startswith(STDLIB_ROOT):
@@ -37,11 +47,16 @@ def __force_reload_rec(module_obj, indent=0):
     if not isinstance(module_obj, types.ModuleType):
         return
 
+    global __reloaded_modules
+    if module_obj in __reloaded_modules:
+        return False
+
     if not __is_reload_target(module_obj):
         return
 
     print('{}reload {}, {}'.format('  ' * indent, module_obj.__name__, module_obj.__file__))
     module_obj = reload_module(module_obj)
+    __reloaded_modules.add(module_obj)
 
     for submodule in __find_submodules(module_obj):
         if not __is_reload_target(submodule.module_obj):
@@ -55,6 +70,7 @@ def __force_reload_rec(module_obj, indent=0):
                 if as_name is None:
                     as_name = name
 
+                '''
                 if as_name == name:
                     print('{} - ({}) {} {} {} -> {}'.format(
                         '  ' * (indent + 1),
@@ -67,6 +83,7 @@ def __force_reload_rec(module_obj, indent=0):
                         module_obj.__name__,
                         name, as_name, module_obj.__dict__[as_name],
                         id(module_obj.__dict__[as_name]), id(submodule.module_obj.__dict__[name])))
+                '''
 
                 module_obj.__dict__[as_name] = submodule.module_obj.__dict__[name]
 
